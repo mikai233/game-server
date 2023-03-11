@@ -1,11 +1,13 @@
-use anyhow::anyhow;
+use tracing::trace;
 
-use crate::excel::excel_define::{ArrayInt, ArrayUInt, CellType, DictionaryStringFloat, DictionaryStringInt, Vector2ArrayInt, Vector2Float, Vector2Int, Vector2String, Vector2UInt, Vector3ArrayInt, Vector3Float, Vector3Int, Vector3UInt};
+use crate::excel::convert::*;
+use crate::excel::excel_define::CellType;
 
-macro_rules! check {
+macro_rules! parse {
     ($data:expr,$ty:ty) => {
-        if !$data.is_empty() {
-            $data.parse::<$ty>()?;
+        {
+            let data: $ty = $data.parse()?;
+            data
         }
     };
 }
@@ -25,72 +27,88 @@ impl Checker for CellChecker {
         let (ty, data) = input;
         match ty {
             CellType::UInt => {
-                check!(data,u32);
+                let parsed = parse!(data,u32);
+                trace!("key: {}, parse data: {:?} to {:?}",ty,data,parsed);
             }
             CellType::Int => {
-                check!(data,i32);
+                let parsed = parse!(data,i32);
+                trace!("key: {}, parse data: {:?} to {:?}",ty,data,parsed);
             }
             CellType::Long => {
-                check!(data,i64);
+                let parsed = parse!(data,i64);
+                trace!("key: {}, parse data: {:?} to {:?}",ty,data,parsed);
             }
             CellType::String => {
-                check!(data,String);
+                let parsed = parse!(data,String);
+                trace!("key: {}, parse data: {:?} to {:?}",ty,data,parsed);
             }
             CellType::Bool => {
-                if data != "1" && data != "0" {
-                    return Err(anyhow!(format!("illegal bool data: {}",data)));
-                }
+                let parsed = parse!(data,bool);
+                trace!("key: {}, parse data: {:?} to {:?}",ty,data,parsed);
             }
             CellType::Vector3ArrayInt => {
-                check!(data,Vector3ArrayInt);
+                let parsed = parse!(data,Vector3ArrayInt);
+                trace!("key: {}, parse data: {:?} to {:?}",ty,data,parsed);
             }
             CellType::Vector3Int => {
-                check!(data,Vector3Int);
+                let parsed = parse!(data,Vector3Int);
+                trace!("key: {}, parse data: {:?} to {:?}",ty,data,parsed);
             }
             CellType::Vector2Int => {
-                check!(data,Vector2Int);
+                let parsed = parse!(data,Vector2Int);
+                trace!("key: {}, parse data: {:?} to {:?}",ty,data,parsed);
             }
             CellType::Vector3UInt => {
-                check!(data,Vector3UInt);
+                let parsed = parse!(data,Vector3UInt);
+                trace!("key: {}, parse data: {:?} to {:?}",ty,data,parsed);
             }
             CellType::Vector2UInt => {
-                check!(data,Vector2UInt);
+                let parsed = parse!(data,Vector2UInt);
+                trace!("key: {}, parse data: {:?} to {:?}",ty,data,parsed);
             }
             CellType::Vector2ArrayInt => {
-                check!(data,Vector2ArrayInt);
+                let parsed = parse!(data,Vector2ArrayInt);
+                trace!("key: {}, parse data: {:?} to {:?}",ty,data,parsed);
             }
             CellType::ArrayInt => {
-                check!(data,ArrayInt);
+                let parsed = parse!(data,ArrayInt);
+                trace!("key: {}, parse data: {:?} to {:?}",ty,data,parsed);
             }
             CellType::ArrayUInt => {
-                check!(data,ArrayUInt);
+                let parsed = parse!(data,ArrayUInt);
+                trace!("key: {}, parse data: {:?} to {:?}",ty,data,parsed);
             }
             CellType::DictionaryStringFloat => {
-                check!(data,DictionaryStringFloat);
+                unimplemented!("DictionaryStringFloat")
             }
             CellType::DictionaryStringInt => {
-                check!(data,DictionaryStringInt);
+                unimplemented!("DictionaryStringInt")
             }
             CellType::Lang => {
-                check!(data,String);
+                let parsed = parse!(data,String);
+                trace!("key: {}, parse data: {:?} to {:?}",ty,data,parsed);
             }
             CellType::Float => {
-                check!(data,f32);
+                let parsed = parse!(data,f32);
+                trace!("key: {}, parse data: {:?} to {:?}",ty,data,parsed);
             }
             CellType::Double => {
-                check!(data,f64);
+                let parsed = parse!(data,f64);
+                trace!("key: {}, parse data: {:?} to {:?}",ty,data,parsed);
             }
             CellType::Vector2Float => {
-                check!(data,Vector2Float);
+                let parsed = parse!(data,Vector2Float);
+                trace!("key: {}, parse data: {:?} to {:?}",ty,data,parsed);
             }
             CellType::Vector3Float => {
-                check!(data,Vector3Float);
+                let parsed = parse!(data,Vector3Float);
+                trace!("key: {}, parse data: {:?} to {:?}",ty,data,parsed);
             }
             CellType::Vector2String => {
-                check!(data,Vector2String);
+                let parsed = parse!(data,Vector2String);
+                trace!("key: {}, parse data: {:?} to {:?}",ty,data,parsed);
             }
         }
         Ok(())
     }
 }
-
