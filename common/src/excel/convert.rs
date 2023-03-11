@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use crate::excel::excel_define::CellType;
+
 pub type Vector3ArrayInt = Vec<(i32, i32, i32)>;
 pub type Vector3Int = (i32, i32, i32);
 pub type Vector2Int = (i32, i32);
@@ -27,10 +29,10 @@ pub trait Parse<T>: Sized {
 macro_rules! to_lua {
     ($ty:ty) => {
         impl ToLua for $ty {
-            type Output = $ty;
+            type Output = String;
 
             fn to_lua(&self) -> anyhow::Result<Self::Output> {
-                Ok(self.clone())
+                Ok(self.to_string())
             }
         }
     };
@@ -39,7 +41,14 @@ macro_rules! to_lua {
 to_lua!(u32);
 to_lua!(i32);
 to_lua!(i64);
-to_lua!(String);
+// to_lua!(String);
+impl ToLua for String {
+    type Output = String;
+
+    fn to_lua(&self) -> anyhow::Result<Self::Output> {
+        Ok(format!("\"{}\"", self.to_string()))
+    }
+}
 to_lua!(bool);
 to_lua!(f32);
 to_lua!(f64);
@@ -51,7 +60,7 @@ macro_rules! array_to_lua {
 
             fn to_lua(&self) -> anyhow::Result<Self::Output> {
                 let string_vec = self.iter().map(ToString::to_string).collect::<Vec<_>>().join(", ");
-                Ok(format!("{{{}}}", string_vec))
+                Ok(format!("{{ {} }}", string_vec))
             }
         }
     };
@@ -66,7 +75,7 @@ macro_rules! vector3_to_lua {
             type Output = String;
 
             fn to_lua(&self) -> anyhow::Result<Self::Output> {
-                Ok(format!("{{{}, {}, {}}}", self.0.to_lua()?, self.1.to_lua()?, self.2.to_lua()?))
+                Ok(format!("{{ {}, {}, {} }}", self.0.to_lua()?, self.1.to_lua()?, self.2.to_lua()?))
             }
         }
     };
@@ -74,6 +83,7 @@ macro_rules! vector3_to_lua {
 
 vector3_to_lua!(Vector3Int);
 vector3_to_lua!(Vector3UInt);
+vector3_to_lua!(Vector3Float);
 
 macro_rules! vector_array_to_lua {
     ($name:ident) => {
@@ -86,7 +96,7 @@ macro_rules! vector_array_to_lua {
                     let v = vector.to_lua()?;
                     vector_vec.push(v);
                 }
-                Ok(format!("{{{}}}",vector_vec.join(", ")))
+                Ok(format!("{{ {} }}",vector_vec.join(", ")))
             }
         }
     };
@@ -101,7 +111,7 @@ macro_rules! vector2_to_lua {
             type Output = String;
 
             fn to_lua(&self) -> anyhow::Result<Self::Output> {
-                Ok(format!("{{{}, {}}}", self.0.to_lua()?, self.1.to_lua()?))
+                Ok(format!("{{ {}, {} }}", self.0.to_lua()?, self.1.to_lua()?))
             }
         }
     };
@@ -111,28 +121,6 @@ vector2_to_lua!(Vector2Int);
 vector2_to_lua!(Vector2UInt);
 vector2_to_lua!(Vector2Float);
 vector2_to_lua!(Vector2String);
-
-// impl ToLua for Vector3ArrayInt {
-//     type Output = String;
-//
-//     fn to_lua(&self) -> anyhow::Result<Self::Output> {
-//         //{{1, 2, 3}, {4, 5, 6}}
-//         let mut vector3_vec = vec![];
-//         for vector3 in self {
-//             let v = vector3.to_lua()?;
-//             vector3_vec.push(v);
-//         }
-//         Ok(format!("{{{}}}",vector3_vec.join(",")))
-//     }
-// }
-
-// impl ToLua for Vector3Int {
-//     type Output = String;
-//
-//     fn to_lua(&self) -> anyhow::Result<Self::Output> {
-//         Ok(format!("{{{}, {}, {}}}", self.0.to_lua()?, self.1.to_lua()?, self.2.to_lua()?))
-//     }
-// }
 
 macro_rules! map_to_lua {
     ($name:ident) => {
@@ -144,7 +132,7 @@ macro_rules! map_to_lua {
                 for (k, v) in self {
                     kv.push(format!("{{{} = {}}}", k, v));
                 }
-                Ok(format!("{{{}}}", kv.join(", ")))
+                Ok(format!("{{ {} }}", kv.join(", ")))
             }
         }
     };
@@ -271,3 +259,75 @@ macro_rules! parse_vector_array {
 
 parse_vector_array!(Vector2ArrayInt);
 parse_vector_array!(Vector3ArrayInt);
+
+pub struct LuaWriter;
+
+impl LuaWriter {
+    pub fn write(ty: &CellType, data: &String) -> anyhow::Result<String> {
+        match ty {
+            CellType::UInt => {
+                crate::parse!(data,u32).to_lua()
+            }
+            CellType::Int => {
+                crate::parse!(data,i32).to_lua()
+            }
+            CellType::Long => {
+                crate::parse!(data,i64).to_lua()
+            }
+            CellType::String => {
+                crate::parse!(data,String).to_lua()
+            }
+            CellType::Bool => {
+                crate::parse!(data,bool).to_lua()
+            }
+            CellType::Vector3ArrayInt => {
+                crate::parse!(data,Vector3ArrayInt).to_lua()
+            }
+            CellType::Vector3Int => {
+                crate::parse!(data,Vector3Int).to_lua()
+            }
+            CellType::Vector2Int => {
+                crate::parse!(data,Vector2Int).to_lua()
+            }
+            CellType::Vector3UInt => {
+                crate::parse!(data,Vector3UInt).to_lua()
+            }
+            CellType::Vector2UInt => {
+                crate::parse!(data,Vector2UInt).to_lua()
+            }
+            CellType::Vector2ArrayInt => {
+                crate::parse!(data,Vector2ArrayInt).to_lua()
+            }
+            CellType::ArrayInt => {
+                crate::parse!(data,ArrayInt).to_lua()
+            }
+            CellType::ArrayUInt => {
+                crate::parse!(data,ArrayUInt).to_lua()
+            }
+            CellType::DictionaryStringFloat => {
+                unimplemented!("DictionaryStringFloat")
+            }
+            CellType::DictionaryStringInt => {
+                unimplemented!("DictionaryStringInt")
+            }
+            CellType::Lang => {
+                crate::parse!(data,String).to_lua()
+            }
+            CellType::Float => {
+                crate::parse!(data,f32).to_lua()
+            }
+            CellType::Double => {
+                crate::parse!(data,f64).to_lua()
+            }
+            CellType::Vector2Float => {
+                crate::parse!(data,Vector2Float).to_lua()
+            }
+            CellType::Vector3Float => {
+                crate::parse!(data,Vector3Float).to_lua()
+            }
+            CellType::Vector2String => {
+                crate::parse!(data,Vector2String).to_lua()
+            }
+        }
+    }
+}

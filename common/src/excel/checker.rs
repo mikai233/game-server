@@ -3,6 +3,7 @@ use tracing::trace;
 use crate::excel::convert::*;
 use crate::excel::excel_define::CellType;
 
+#[macro_export]
 macro_rules! parse {
     ($data:expr,$ty:ty) => {
         {

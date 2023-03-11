@@ -5,6 +5,7 @@ use std::io::Write;
 use std::ops::Not;
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{anyhow, Context};
 use calamine::{DataType, open_workbook, Reader, Xlsx};
@@ -15,6 +16,7 @@ use tracing_subscriber::fmt::time::LocalTime;
 use walkdir::WalkDir;
 
 use common::excel::checker::{CellChecker, Checker};
+use common::excel::convert::ToLua;
 use common::excel::excel_define::{CellType, GameConfig, GameConfigs, KeyType};
 
 #[derive(Parser, Debug)]
@@ -56,25 +58,28 @@ fn main() -> anyhow::Result<()> {
     }
 
     let mut game_configs = GameConfigs {
-        data: Vec::with_capacity(all_excel_path.len())
+        data: Vec::with_capacity(all_excel_path.len()),
+        create_mills: SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis(),
+        ..Default::default()
     };
     for path in all_excel_path {
         if let Some(ext) = path.extension() {
             match ext.to_os_string().into_string() {
                 Ok(ext) => {
                     if ext == "xlsx" {
-                        let config = read_game_config(path, &args);
-                        game_configs.data.push(config?);
+                        if let Some(config) = read_game_config(path, &args)? {
+                            game_configs.data.push(config);
+                        }
                     } else {
-                        warn!("ignore files that are not of type xlsx: {}",path.display());
+                        warn!("ignore files that are not of type xlsx: {}", path.display());
                     }
                 }
                 Err(error) => {
-                    error!("failed to convert osString: {:?}",error);
+                    error!("failed to convert osString: {:?}", error);
                 }
             };
         } else {
-            warn!("ignore files without extensions: {}",path.display());
+            warn!("ignore files without extensions: {}", path.display());
         }
     }
     check_data_type(&game_configs)?;
@@ -83,7 +88,7 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn read_game_config(path: PathBuf, arg: &ExcelArgs) -> anyhow::Result<GameConfig> {
+fn read_game_config(path: PathBuf, arg: &ExcelArgs) -> anyhow::Result<Option<GameConfig>> {
     let display_path = path.display().to_string();
     info!("read: {}", display_path);
     let mut workbook: Xlsx<_> = open_workbook(path).context(format!("open excel: {} failed", display_path))?;
@@ -99,7 +104,7 @@ fn read_game_config(path: PathBuf, arg: &ExcelArgs) -> anyhow::Result<GameConfig
                 0 => {
                     match data_type {
                         DataType::String(data) => {
-                            cell_name.push(data.clone());
+                            cell_name.push(data.trim().to_string());
                         }
                         other => {
                             return Err(anyhow!(format!("excel string expected, got: {}",other)));
@@ -109,7 +114,7 @@ fn read_game_config(path: PathBuf, arg: &ExcelArgs) -> anyhow::Result<GameConfig
                 1 => {
                     match data_type {
                         DataType::String(data) => {
-                            cell_type.push(CellType::from_str(data)?);
+                            cell_type.push(CellType::from_str(data.trim())?);
                         }
                         other => {
                             return Err(anyhow!(format!("excel string expected, got: {}",other)));
@@ -119,7 +124,7 @@ fn read_game_config(path: PathBuf, arg: &ExcelArgs) -> anyhow::Result<GameConfig
                 2 => {
                     match data_type {
                         DataType::String(data) => {
-                            key_type.push(KeyType::from_str(data)?);
+                            key_type.push(KeyType::from_str(data.trim())?);
                         }
                         other => {
                             return Err(anyhow!(format!("excel string expected, got: {}",other)));
@@ -128,11 +133,13 @@ fn read_game_config(path: PathBuf, arg: &ExcelArgs) -> anyhow::Result<GameConfig
                 }
                 3 | 4 => {}
                 _ => {
-                    row_data.push(data_type.to_string());
+                    row_data.push(data_type.to_string().trim().to_string());
                 }
             }
         }
-        excel_data.push(row_data);
+        if i >= 5 {
+            excel_data.push(row_data);
+        }
     }
     let config = GameConfig::builder()
         .name(sheet_name.clone())
@@ -141,12 +148,16 @@ fn read_game_config(path: PathBuf, arg: &ExcelArgs) -> anyhow::Result<GameConfig
         .cell_type(cell_type)
         .key_type(key_type)
         .build();
-    let config = if !arg.client {
+    let final_config = if !arg.client {
         drop_client_data(config)
     } else {
         config
     };
-    Ok(config)
+    return if !final_config.key_type.is_empty() {
+        Ok(Some(final_config))
+    } else {
+        Ok(None)
+    };
 }
 
 fn check_data_type(config: &GameConfigs) -> anyhow::Result<()> {
@@ -173,15 +184,15 @@ fn check_data_type(config: &GameConfigs) -> anyhow::Result<()> {
 fn drop_client_data(config: GameConfig) -> GameConfig {
     let config_builder = GameConfig::builder().name(config.name);
     let mut server_key = HashMap::new();
-    let all_server_keys = KeyType::all_server_key();
+    let all_server_side = KeyType::server_side();
     for (i, k) in config.key_type.iter().enumerate() {
-        if all_server_keys.contains(&k) {
+        if all_server_side.contains(&k) {
             server_key.insert(i, k.clone());
         }
     }
     let mut server_cell_name = vec![];
     for (i, n) in config.cell_name.into_iter().enumerate() {
-        if let Some(k) = server_key.get(&i) {
+        if let Some(_) = server_key.get(&i) {
             server_cell_name.push(n);
         }
     }
@@ -233,7 +244,19 @@ fn write_to_bytes(game_configs: &GameConfigs, args: &ExcelArgs) -> anyhow::Resul
 }
 
 fn generate_lua(game_configs: &GameConfigs, args: &ExcelArgs) -> anyhow::Result<()> {
-    //todo
+    if args.lua {
+        let path = PathBuf::from(args.output_path.clone()).join("lua");
+        if path.exists() {
+            std::fs::remove_dir_all(&path).context("failed to remove dir")?;
+        }
+        std::fs::create_dir_all(&path).context("failed to create dir")?;
+        for game_config in &game_configs.data {
+            let path = path.join(format!("{}.lua", game_config.name));
+            let lua_code = game_config.to_lua()?;
+            let mut file = std::fs::File::create(path)?;
+            file.write(lua_code.as_bytes()).context("failed to write lua config")?;
+        }
+    }
     Ok(())
 }
 
