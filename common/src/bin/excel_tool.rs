@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::env;
 use std::fs::File;
 use std::io::Write;
+use std::ops::Not;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -149,13 +150,22 @@ fn read_game_config(path: PathBuf, arg: &ExcelArgs) -> anyhow::Result<GameConfig
 }
 
 fn check_data_type(config: &GameConfigs) -> anyhow::Result<()> {
+    let mut errors = vec![];
     let cell_checker = CellChecker;
     for config in &config.data {
         for row in &config.data {
             for (data, ty) in row.iter().zip(&config.cell_type) {
-                cell_checker.check((ty.clone(), data.clone())).unwrap();
+                if let Some(error) = cell_checker.check((ty.clone(), data.clone())).err() {
+                    errors.push(error);
+                }
             }
         }
+    }
+    if errors.is_empty().not() {
+        for error in errors {
+            error!("{}",error);
+        }
+        return Err(anyhow!("excel data check failed"));
     }
     Ok(())
 }

@@ -238,9 +238,6 @@ impl FromStr for ArrayUInt {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         default_data!(s);
-        if s.is_empty() {
-            return Ok(Default::default());
-        }
         let split_str = s.split(",").map(ToString::to_string).collect::<Vec<String>>();
         let split_u32 = split_str.iter().map(|x| { x.parse::<u32>() }).collect::<Vec<_>>();
         let mut result = vec![];
