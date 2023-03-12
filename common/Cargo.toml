@@ -17,8 +17,8 @@ lz4 = "1.24.0"
 clap = { version = "4.1.8", features = ["derive"] }
 tracing = { version = "0.1.37" }
 tracing-subscriber = { version = "0.3.16", features = ["local-time"] }
-mlua = { version = "0.8.8", features = ["lua54", "macros"] }
-derive = { path = "../derive" }
+mlua = { version = "0.8.8", features = ["luajit", "vendored", "macros"] }
+stardust-derive = { path = "../stardust-derive" }
 
 [features]
 

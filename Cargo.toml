@@ -8,4 +8,4 @@ edition = "2021"
 [dependencies]
 
 [workspace]
-members = ["common", "derive", "gate"]
+members = ["common", "stardust-protobuf", "stardust-derive", "gate"]
