@@ -46,7 +46,8 @@ impl ToLua for String {
     type Output = String;
 
     fn to_lua(&self) -> anyhow::Result<Self::Output> {
-        Ok(format!("\"{}\"", self.to_string()))
+        let escape_string = self.replace("\"", "\\\"").replace("\r", "\\\r").replace("\n", "\\\n");
+        Ok(format!("\"{}\"", escape_string))
     }
 }
 to_lua!(bool);

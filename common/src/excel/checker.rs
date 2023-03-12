@@ -1,7 +1,13 @@
+use std::env;
+
+use anyhow::Context;
+use mlua::chunk;
 use tracing::trace;
 
 use crate::excel::convert::*;
 use crate::excel::excel_define::CellType;
+use crate::init_logger;
+use crate::lua_helper::RustUtil;
 
 #[macro_export]
 macro_rules! parse {
@@ -110,6 +116,29 @@ impl Checker for CellChecker {
                 trace!("key: {}, parse data: {:?} to {:?}",ty,data,parsed);
             }
         }
+        Ok(())
+    }
+}
+
+pub struct LuaChecker;
+
+impl Checker for LuaChecker {
+    type Input = String;
+    type Output = ();
+
+    fn check(&self, input: Self::Input) -> anyhow::Result<Self::Output> {
+        init_logger(tracing::Level::INFO).context("failed to init logger")?;
+        let lua = mlua::Lua::new();
+        let rust_util = lua.create_proxy::<RustUtil>()?;
+        lua.globals().set("RustUtil", rust_util)?;
+        println!("{}",input);
+        lua.load(chunk!{
+            package.path = "common/?.lua"
+        }).exec()?;
+        let current_dir = env::current_dir()?;
+        let init_path = current_dir.join(input);
+        let init = std::fs::read_to_string(init_path)?;
+        lua.load(&init).exec()?;
         Ok(())
     }
 }

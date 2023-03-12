@@ -94,12 +94,13 @@ impl ToLua for GameConfig {
         let mut key_to_index = Vec::with_capacity(self.data.len());
         let mut formatted_rows = vec![];
         for (i, row_data) in self.data.iter().enumerate() {
-            let key = &row_data[key_index];
-            key_to_index.push((key.clone(), i + 1));
             let mut formatted_one_cell = vec![];
             for (i, (cell_data, ty)) in row_data.iter().zip(&self.cell_type).enumerate() {
                 let formatted_cell_data = LuaWriter::write(ty, cell_data)?;
-                formatted_one_cell.push(format!("[{}] = {}", i + 1, formatted_cell_data))
+                formatted_one_cell.push(format!("[{}] = {}", i + 1, formatted_cell_data));
+                if i == key_index {
+                    key_to_index.push((formatted_cell_data, i + 1));
+                }
             }
             let formatted_one_row = format!("    [{}] = {{ {} }}", i + 1, formatted_one_cell.join(", "));
             formatted_rows.push(formatted_one_row);
@@ -117,7 +118,7 @@ impl ToLua for GameConfig {
         let formatted_key_to_index = format!("{}", formatted_key_to_index.join(", "));
         Ok(format!(r#"
 local data = {{
-{},
+{}
 }}
 
 local s_name = '{}'
@@ -135,9 +136,19 @@ fn lua_meta_table() -> String {
     r#"
 local meta = {
     __index = function(_, key)
-        local i = s_id[key]
-        local v = rawget(data, i)
-        return v
+        if type(key) == "string" then
+            local i = s_id[key]
+            local v = rawget(data, i)
+            return v
+        elseif type(key) == "number" then
+            local v = rawget(data, key)
+            return v
+        else
+            return nil
+        end
+    end,
+    __newindex = function()
+        error("Attempt to modify read-only table")
     end,
     __pairs = function(_, _)
         local function iter(tbl, key)
@@ -161,8 +172,7 @@ local meta = {
     end
 }
 
-local config = {
-}
+local config = { name = s_name }
 
 setmetatable(config, meta)
 do

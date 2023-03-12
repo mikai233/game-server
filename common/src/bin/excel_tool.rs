@@ -12,12 +12,12 @@ use calamine::{DataType, open_workbook, Reader, Xlsx};
 use clap::Parser;
 use lz4::EncoderBuilder;
 use tracing::{error, info, warn};
-use tracing_subscriber::fmt::time::LocalTime;
 use walkdir::WalkDir;
 
 use common::excel::checker::{CellChecker, Checker};
 use common::excel::convert::ToLua;
 use common::excel::excel_define::{CellType, GameConfig, GameConfigs, KeyType};
+use common::init_logger;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about)]
@@ -40,7 +40,7 @@ struct ExcelArgs {
 
 fn get_output_path() -> anyhow::Result<String> {
     let current_dir = env::current_dir()?.into_os_string().into_string().map_err(|_| { anyhow!("failed to convert os string to string") })?;
-    Ok(format!("{}/generated_excel", current_dir))
+    Ok(format!("{}/lua/generated_excel", current_dir))
 }
 
 
@@ -257,18 +257,5 @@ fn generate_lua(game_configs: &GameConfigs, args: &ExcelArgs) -> anyhow::Result<
             file.write(lua_code.as_bytes()).context("failed to write lua config")?;
         }
     }
-    Ok(())
-}
-
-fn init_logger(max_level: tracing::Level) -> anyhow::Result<()> {
-    let format = tracing_subscriber::fmt::format()
-        .with_timer(LocalTime::rfc_3339())
-        .compact();
-    let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        .event_format(format)
-        .with_max_level(max_level)
-        .finish();
-
-    tracing::subscriber::set_global_default(subscriber)?;
     Ok(())
 }
