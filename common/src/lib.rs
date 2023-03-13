@@ -15,3 +15,8 @@ pub fn init_logger(max_level: tracing::Level) -> anyhow::Result<()> {
     tracing::subscriber::set_global_default(subscriber)?;
     Ok(())
 }
+
+#[cfg(test)]
+mod test {
+    use mlua::Lua;
+}
