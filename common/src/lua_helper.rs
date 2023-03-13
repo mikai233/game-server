@@ -3,7 +3,7 @@ use std::path::Path;
 use mlua::{ExternalError, UserDataMethods};
 use mlua::prelude::LuaUserData;
 
-use derive::{lua_function, lua_helper};
+use stardust_derive::{lua_function, lua_helper};
 
 pub struct RustUtil;
 

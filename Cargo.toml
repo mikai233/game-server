@@ -1,5 +1,5 @@
 [package]
-name = "game-server"
+name = "stardust"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,4 +8,4 @@ edition = "2021"
 [dependencies]
 
 [workspace]
-members = ["common", "stardust-protobuf", "stardust-derive", "gate"]
+members = ["common", "proto", "stardust-derive", "gate"]

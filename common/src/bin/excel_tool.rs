@@ -124,7 +124,7 @@ fn read_game_config(path: PathBuf, arg: &ExcelArgs) -> anyhow::Result<Option<Gam
                 2 => {
                     match data_type {
                         DataType::String(data) => {
-                            key_type.push(KeyType::from_str(data.trim())?);
+                            key_type.push(KeyType::from_str(data.trim()).context(format!("convert string {} to enum KeyType error", data))?);
                         }
                         other => {
                             return Err(anyhow!(format!("excel string expected, got: {}",other)));
@@ -236,9 +236,10 @@ fn write_to_bytes(game_configs: &GameConfigs, args: &ExcelArgs) -> anyhow::Resul
         let path = PathBuf::from(args.output_path.clone());
         std::fs::create_dir_all(&path).context("failed to create dir")?;
         let path = path.join("config.bytes");
-        let display = path.display().to_string();
-        let mut encoder = EncoderBuilder::new().level(args.compress_level).build(File::create(path).context(format!("failed to create file: {}", display))?).context("failed to create EncoderBuilder")?;
-        encoder.write(&encoded).unwrap();
+        let path_display = path.display().to_string();
+        let mut encoder = EncoderBuilder::new().level(args.compress_level).build(File::create(path).context(format!("failed to create file: {}", path_display))?).context("failed to create EncoderBuilder")?;
+        encoder.write(&encoded)?;
+        info!("config.bytes write to: {}",path_display);
     }
     Ok(())
 }
@@ -256,6 +257,7 @@ fn generate_lua(game_configs: &GameConfigs, args: &ExcelArgs) -> anyhow::Result<
             let mut file = std::fs::File::create(path)?;
             file.write(lua_code.as_bytes()).context("failed to write lua config")?;
         }
+        info!("generated lua write to: {}",path.display());
     }
     Ok(())
 }

@@ -1,5 +1,5 @@
 [package]
-name = "stardust-protobuf"
+name = "proto"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,7 +10,8 @@ anyhow = "1.0.69"
 mlua = { version = "0.8.8", features = ["luajit", "vendored", "serialize"] }
 serde = { version = "1.0.155", features = ["derive"] }
 serde_json = "1.0.94"
-protobuf = { version = "3.2.0" }
+protobuf = "3.2.0" # todo support protobuf and prost
+prost = "0.11.8"
 
 [build-dependencies]
 anyhow = "1.0.69"
@@ -18,3 +19,6 @@ walkdir = "2.3.2"
 protobuf = "3.2.0"
 protobuf-codegen = "3.2.0"
 protoc-bin-vendored = "3.0.0"
+prost-build = "0.11.8"
+
+[features]

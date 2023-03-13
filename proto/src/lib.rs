@@ -24,7 +24,7 @@ fn deserialize_enum_or_unknown<'de, E: EnumFull, D: serde::Deserializer<'de>>(
         type Value = EnumOrUnknown<E>;
 
         fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
-            write!(formatter, "a string, an integer or none")
+            write!(formatter, "a string, an integer")
         }
 
         fn visit_i32<R>(self, v: i32) -> Result<Self::Value, R>
@@ -45,13 +45,6 @@ fn deserialize_enum_or_unknown<'de, E: EnumFull, D: serde::Deserializer<'de>>(
                     v
                 ))),
             }
-        }
-
-        fn visit_unit<R>(self) -> Result<Self::Value, R>
-            where
-                R: serde::de::Error,
-        {
-            Ok(EnumOrUnknown::default())
         }
     }
 
